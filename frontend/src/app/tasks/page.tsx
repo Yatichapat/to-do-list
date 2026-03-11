@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import TaskModal from "@/components/TaskModal";
+import TaskList, { TaskItem } from "@/components/TaskList";
 import { apiFetch } from "@/lib/api";
 
 interface Category {
@@ -11,34 +12,17 @@ interface Category {
   name: string;
 }
 
-interface Task {
+interface AppUser {
   id: number;
-  title: string;
-  description: string;
-  status: string;
-  due_date: string | null;
-  category: number | null;
-  category_name: string | null;
-  assigned_users_detail: { id: number; username: string; email: string }[];
-  created_at: string;
+  username: string;
+  email: string;
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  progress: "In Progress",
-  done: "Completed",
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-700",
-  progress: "bg-blue-100 text-blue-700",
-  done: "bg-green-100 text-green-700",
-};
 
 export default function TasksPage() {
   const router = useRouter();
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -46,7 +30,7 @@ export default function TasksPage() {
   const [filterCategory, setFilterCategory] = useState("all");
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem("access")) {
@@ -58,16 +42,18 @@ export default function TasksPage() {
 
   const loadData = async () => {
     setLoading(true);
-    const [tasksRes, catsRes] = await Promise.all([
+    const [tasksRes, catsRes, usersRes] = await Promise.all([
       apiFetch("/tasks/"),
       apiFetch("/categories/"),
+      apiFetch("/users/"),
     ]);
-    if (tasksRes.status === 401 || catsRes.status === 401) {
+    if (tasksRes.status === 401 || catsRes.status === 401 || usersRes.status === 401) {
       router.replace("/login");
       return;
     }
     setTasks(await tasksRes.json());
     setCategories(await catsRes.json());
+    setUsers(await usersRes.json());
     setLoading(false);
   };
 
@@ -75,6 +61,60 @@ export default function TasksPage() {
     if (!confirm("Delete this task?")) return;
     await apiFetch(`/tasks/${id}/`, { method: "DELETE" });
     setTasks((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleChangeStatus = async (task: TaskItem, status: string) => {
+    if (task.status === status) return;
+
+    const previous = task.status;
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, status } : t))
+    );
+
+    const res = await apiFetch(`/tasks/${task.id}/`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+
+    if (!res.ok) {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: previous } : t))
+      );
+    }
+  };
+
+  const handleChangeCategory = async (task: TaskItem, categoryId: number | null) => {
+    if (task.category === categoryId) return;
+
+    const previousCategory = task.category;
+    const previousCategoryName = task.category_name;
+    const nextCategoryName =
+      categoryId === null
+        ? null
+        : categories.find((category) => category.id === categoryId)?.name ?? null;
+
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id
+          ? { ...t, category: categoryId, category_name: nextCategoryName }
+          : t
+      )
+    );
+
+    const res = await apiFetch(`/tasks/${task.id}/`, {
+      method: "PATCH",
+      body: JSON.stringify({ category: categoryId }),
+    });
+
+    if (!res.ok) {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === task.id
+            ? { ...t, category: previousCategory, category_name: previousCategoryName }
+            : t
+        )
+      );
+    }
   };
 
   const filteredTasks = useMemo(() => {
@@ -97,7 +137,7 @@ export default function TasksPage() {
     setModalOpen(true);
   };
 
-  const openEdit = (task: Task) => {
+  const openEdit = (task: TaskItem) => {
     setEditingTask(task as any);
     setModalOpen(true);
   };
@@ -105,19 +145,6 @@ export default function TasksPage() {
   const handleSaved = () => {
     setModalOpen(false);
     loadData();
-  };
-
-  const formatDate = (iso: string | null) => {
-    if (!iso) return null;
-    return new Date(iso).toLocaleString("th-TH", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  };
-
-  const isOverdue = (due: string | null, status: string) => {
-    if (!due || status === "done") return false;
-    return new Date(due) < new Date();
   };
 
   return (
@@ -142,13 +169,13 @@ export default function TasksPage() {
             placeholder="Search tasks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 min-w-48 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="flex-1 min-w-48 border rounded-lg px-3 py-2 text-sm text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
 
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="border rounded-lg px-3 py-2 text-sm text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -159,7 +186,7 @@ export default function TasksPage() {
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="border rounded-lg px-3 py-2 text-sm text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
           >
             <option value="all">All Categories</option>
             <option value="none">Uncategorized</option>
@@ -183,74 +210,22 @@ export default function TasksPage() {
           Showing {filteredTasks.length} of {tasks.length} tasks
         </p>
 
-        {/* Task list */}
-        {loading ? (
-          <div className="text-center py-20 text-gray-400">Loading...</div>
-        ) : filteredTasks.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">No tasks found</div>
-        ) : (
-          <div className="space-y-3">
-            {filteredTasks.map((task) => (
-              <div
-                key={task.id}
-                className="bg-white rounded-xl shadow-sm p-4 flex items-start gap-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-gray-800 truncate">{task.title}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[task.status]}`}>
-                      {STATUS_LABEL[task.status]}
-                    </span>
-                    {task.category_name && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                        {task.category_name}
-                      </span>
-                    )}
-                  </div>
-
-                  {task.description && (
-                    <p className="text-sm text-gray-500 truncate mb-1">{task.description}</p>
-                  )}
-
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-                    {task.due_date && (
-                      <span className={isOverdue(task.due_date, task.status) ? "text-red-500 font-medium" : ""}>
-                        📅 {formatDate(task.due_date)}
-                        {isOverdue(task.due_date, task.status) && " (Overdue)"}
-                      </span>
-                    )}
-                    {task.assigned_users_detail.length > 0 && (
-                      <span>
-                        👥 {task.assigned_users_detail.map((u) => u.username).join(", ")}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => openEdit(task)}
-                    className="text-xs px-3 py-1.5 border rounded-lg text-gray-600 hover:bg-gray-50"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(task.id)}
-                    className="text-xs px-3 py-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <TaskList
+          loading={loading}
+          tasks={filteredTasks}
+          categories={categories}
+          onEdit={openEdit}
+          onDelete={handleDelete}
+          onChangeStatus={handleChangeStatus}
+          onChangeCategory={handleChangeCategory}
+        />
       </main>
 
       {modalOpen && (
         <TaskModal
           task={editingTask as any}
           categories={categories}
+          users={users}
           onClose={() => setModalOpen(false)}
           onSaved={handleSaved}
         />

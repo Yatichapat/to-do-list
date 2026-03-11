@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
 interface Category {
   id: number;
   name: string;
+}
+
+interface AppUser {
+  id: number;
+  username: string;
+  email: string;
 }
 
 interface Task {
@@ -21,6 +27,7 @@ interface Task {
 interface Props {
   task: Task | null;
   categories: Category[];
+  users: AppUser[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -34,14 +41,18 @@ const emptyForm: Task = {
   assigned_users: [],
 };
 
-export default function TaskModal({ task, categories, onClose, onSaved }: Props) {
+export default function TaskModal({ task, categories, users, onClose, onSaved }: Props) {
   const [form, setForm] = useState<Task>(task ?? emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [assignedUserQuery, setAssignedUserQuery] = useState("");
+  const [showAssignedUserOptions, setShowAssignedUserOptions] = useState(false);
 
   useEffect(() => {
     setForm(task ?? emptyForm);
     setError("");
+    setAssignedUserQuery("");
+    setShowAssignedUserOptions(false);
   }, [task]);
 
   const handleChange = (
@@ -86,6 +97,41 @@ export default function TaskModal({ task, categories, onClose, onSaved }: Props)
     }
   };
 
+  const toggleAssignedUser = (userId: number) => {
+    setForm((prev) => {
+      const exists = prev.assigned_users.includes(userId);
+      return {
+        ...prev,
+        assigned_users: exists
+          ? prev.assigned_users.filter((id) => id !== userId)
+          : [...prev.assigned_users, userId],
+      };
+    });
+  };
+
+  const selectedUsers = useMemo(
+    () => users.filter((user) => form.assigned_users.includes(user.id)),
+    [users, form.assigned_users]
+  );
+
+  const filteredUsers = useMemo(() => {
+    const query = assignedUserQuery.trim().toLowerCase();
+    return users.filter((user) => {
+      if (form.assigned_users.includes(user.id)) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return (
+        user.username.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query)
+      );
+    });
+  }, [users, form.assigned_users, assignedUserQuery]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
@@ -103,7 +149,7 @@ export default function TaskModal({ task, categories, onClose, onSaved }: Props)
               name="title"
               value={form.title}
               onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="Task title"
             />
           </div>
@@ -115,7 +161,7 @@ export default function TaskModal({ task, categories, onClose, onSaved }: Props)
               value={form.description}
               onChange={handleChange}
               rows={3}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+              className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
               placeholder="Optional description"
             />
           </div>
@@ -127,7 +173,7 @@ export default function TaskModal({ task, categories, onClose, onSaved }: Props)
                 name="status"
                 value={form.status}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
                 <option value="pending">Pending</option>
                 <option value="progress">In Progress</option>
@@ -141,7 +187,7 @@ export default function TaskModal({ task, categories, onClose, onSaved }: Props)
                 name="category"
                 value={form.category ?? ""}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
                 <option value="">No category</option>
                 {categories.map((c) => (
@@ -158,8 +204,74 @@ export default function TaskModal({ task, categories, onClose, onSaved }: Props)
               name="due_date"
               value={form.due_date ? form.due_date.slice(0, 16) : ""}
               onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Users</label>
+            <div className="relative">
+              <div className="border border-gray-300 rounded-lg px-3 py-2 min-h-11 focus-within:ring-2 focus-within:ring-blue-400">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedUsers.map((user) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => toggleAssignedUser(user.id)}
+                      className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-700"
+                    >
+                      <span>{user.username}</span>
+                      <span className="text-blue-500">x</span>
+                    </button>
+                  ))}
+                </div>
+
+                <input
+                  type="text"
+                  value={assignedUserQuery}
+                  onChange={(e) => {
+                    setAssignedUserQuery(e.target.value);
+                    setShowAssignedUserOptions(true);
+                  }}
+                  onFocus={() => setShowAssignedUserOptions(true)}
+                  onBlur={() => {
+                    window.setTimeout(() => setShowAssignedUserOptions(false), 120);
+                  }}
+                  placeholder="Click to search users"
+                  className="w-full text-sm text-gray-700 outline-none placeholder:text-gray-400"
+                />
+              </div>
+
+              {showAssignedUserOptions && (
+                <div className="absolute z-10 mt-2 max-h-48 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                  {users.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-gray-400">No users available</p>
+                  ) : filteredUsers.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-gray-400">No matching users</p>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          toggleAssignedUser(user.id);
+                          setAssignedUserQuery("");
+                          setShowAssignedUserOptions(true);
+                        }}
+                        className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-50"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-700 truncate">{user.username}</p>
+                          <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                        </div>
+                        <span className="text-xs text-blue-600">Add</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
