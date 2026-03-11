@@ -41,6 +41,12 @@ class Task(models.Model):
         related_name="tasks"
     )
 
+    assigned_users = models.ManyToManyField(
+        User,
+        related_name="assigned_tasks",
+        blank=True
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
