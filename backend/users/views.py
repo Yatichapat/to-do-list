@@ -2,6 +2,7 @@ import os
 import requests
 
 from django.contrib.auth.models import User
+from rest_framework import permissions
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -81,3 +82,15 @@ class GoogleLoginView(APIView):
 			},
 			status=status.HTTP_200_OK,
 		)
+
+
+class UserListView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def get(self, request):
+		users = User.objects.all().order_by("username")
+		data = [
+			{"id": u.id, "username": u.username, "email": u.email}
+			for u in users
+		]
+		return Response(data, status=status.HTTP_200_OK)

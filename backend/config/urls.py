@@ -18,12 +18,13 @@ from django.contrib import admin
 from django.urls import include, path
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from users.views import GoogleLoginView
+from users.views import GoogleLoginView, UserListView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('tasks.urls')),
     path('api/google-login/', GoogleLoginView.as_view()),
+    path('api/users/', UserListView.as_view()),
 
     path('api/login/', TokenObtainPairView.as_view()),
     path('api/refresh/', TokenRefreshView.as_view()),
