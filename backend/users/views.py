@@ -88,9 +88,6 @@ class UserListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        users = User.objects.all().order_by("username")
-        data = [
-            {"id": u.id, "username": u.username, "email": u.email}
-            for u in users
-        ]
+        user = request.user
+        data = [{"id": user.id, "username": user.username, "email": user.email}]
         return Response(data, status=status.HTTP_200_OK)

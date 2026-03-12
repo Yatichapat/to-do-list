@@ -36,6 +36,14 @@ class TaskSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["user", "created_at"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and request.user and request.user.is_authenticated:
+            self.fields["tag_users"].queryset = User.objects.filter(id=request.user.id)
+        else:
+            self.fields["tag_users"].queryset = User.objects.none()
+
     def validate_category(self, value):
         if value is None:
             return value

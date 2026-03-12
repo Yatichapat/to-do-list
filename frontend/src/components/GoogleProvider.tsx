@@ -2,7 +2,6 @@
 
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
-
 export default function GoogleProvider({
   children,
 }: {
@@ -10,13 +9,10 @@ export default function GoogleProvider({
 }) {
   const rawClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
   const clientId = rawClientId.trim().replace(/^['\"]|['\"]$/g, "");
-  
-  if (!clientId) {
-    throw new Error("Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID in frontend/.env.local");
-  }
 
-  if (!/^\d+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(clientId)) {
-    throw new Error("Invalid NEXT_PUBLIC_GOOGLE_CLIENT_ID format");
+  // Allow the app to run without Google OAuth configuration.
+  if (!clientId) {
+    return <>{children}</>;
   }
 
   return (

@@ -1,5 +1,38 @@
 # To-Do List
 
+## Environment Setup
+
+Before running the project, create and edit these 2 files:
+
+1. `backend/.env`
+2. `frontend/.env.local`
+
+Example `backend/.env`:
+
+```env
+SECRET_KEY=django-insecure-development-key-change-in-production
+DEBUG=True
+DB_NAME=todo_db
+DB_USER=todo_user
+DB_PASSWORD=todo_password
+DB_HOST=localhost
+DB_PORT=5432
+
+GOOGLE_CLIENT_ID=
+GOOGLE_SECRET_KEY=
+```
+
+Example `frontend/.env.local`:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=
+```
+
+Notes:
+- Set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` only if you want Google login.
+- Set `DB_HOST=db` only when the backend runs inside Docker Compose.
+
 ## Quick Start
 
 1. Start database and app with Docker:
@@ -8,7 +41,16 @@
 docker compose up --build
 ```
 
-2. Seed demo data (from `backend/`):
+2. Seed demo data:
+
+- If backend is running in Docker:
+
+```bash
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py seed_demo_data
+```
+
+- If running backend locally from `backend/` directory:
 
 ```bash
 python3 manage.py migrate

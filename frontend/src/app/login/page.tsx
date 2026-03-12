@@ -13,6 +13,11 @@ type CredentialResponse = Parameters<React.ComponentProps<typeof GoogleLogin>["o
 
 export default function LoginPage() {
   const router = useRouter();
+  const hasGoogleClientId = Boolean(
+    (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "")
+      .trim()
+      .replace(/^['\"]|['\"]$/g, "")
+  );
   const [success, setSuccess] = useState(false);
   const [username, setUsername] = useState("demo");
   const [password, setPassword] = useState("Demo1234!");
@@ -134,20 +139,24 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-px flex-1 bg-gray-200" />
-          <span className="text-xs text-gray-400">OR</span>
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
+        {hasGoogleClientId && (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs text-gray-400">OR</span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
 
-        <GoogleLogin
-          theme="outline"
-          size="large"
-          text="continue_with"
-          shape="rectangular"
-          onSuccess={handleGoogleLogin}
-          onError={() => setError("Google login failed.")}
-        />
+            <GoogleLogin
+              theme="outline"
+              size="large"
+              text="continue_with"
+              shape="rectangular"
+              onSuccess={handleGoogleLogin}
+              onError={() => setError("Google login failed.")}
+            />
+          </>
+        )}
 
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
       </div>
