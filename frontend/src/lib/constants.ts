@@ -17,3 +17,5 @@ export const STATUS_CHART_COLOR: Record<string, string> = {
   progress: "#3B82F6",
   done: "#10B981",
 };
+
+export const NEXT_PUBLIC_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
