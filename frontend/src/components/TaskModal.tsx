@@ -24,6 +24,12 @@ interface Props {
   onSaved: () => void;
 }
 
+const STATUS_OPTIONS = [
+  { value: "pending", label: "Pending" },
+  { value: "progress", label: "In Progress" },
+  { value: "done", label: "Completed" },
+];
+
 const emptyForm: Task = {
   title: "",
   description: "",
@@ -47,6 +53,8 @@ export default function TaskModal({
   const [categoryQuery, setCategoryQuery] = useState("");
   const [showCategoryOptions, setShowCategoryOptions] = useState(false);
   const [categoryBusy, setCategoryBusy] = useState(false);
+  const [statusQuery, setStatusQuery] = useState("");
+  const [showStatusOptions, setShowStatusOptions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [assignedUserQuery, setAssignedUserQuery] = useState("");
@@ -60,6 +68,7 @@ export default function TaskModal({
     if (!task) {
       setForm(emptyForm);
       setCategoryQuery("");
+      setStatusQuery("");
     } else {
       const normalizedTagUsers =
         task.tag_users ??
@@ -67,6 +76,7 @@ export default function TaskModal({
         [];
 
       const selectedCategory = categories.find((c) => c.id === task.category);
+      const selectedStatus = STATUS_OPTIONS.find((s) => s.value === task.status);
 
       setForm({
         id: task.id,
@@ -78,9 +88,11 @@ export default function TaskModal({
         tag_users: normalizedTagUsers,
       });
       setCategoryQuery(selectedCategory?.name ?? "");
+      setStatusQuery(selectedStatus?.label ?? "");
     }
     setError("");
     setShowCategoryOptions(false);
+    setShowStatusOptions(false);
     setAssignedUserQuery("");
     setShowAssignedUserOptions(false);
   }, [task, categories]);
@@ -173,6 +185,17 @@ export default function TaskModal({
     );
   }, [localCategories, categoryQuery]);
 
+  const filteredStatusOptions = useMemo(() => {
+    const query = statusQuery.trim().toLowerCase();
+    if (!query) {
+      return STATUS_OPTIONS;
+    }
+
+    return STATUS_OPTIONS.filter((option) =>
+      option.label.toLowerCase().includes(query)
+    );
+  }, [statusQuery]);
+
   const hasExactCategory = useMemo(() => {
     const query = categoryQuery.trim().toLowerCase();
     if (!query) {
@@ -186,6 +209,12 @@ export default function TaskModal({
     setForm((prev) => ({ ...prev, category: category.id }));
     setCategoryQuery(category.name);
     setShowCategoryOptions(false);
+  };
+
+  const selectStatus = (status: typeof STATUS_OPTIONS[0]) => {
+    setForm((prev) => ({ ...prev, status: status.value }));
+    setStatusQuery(status.label);
+    setShowStatusOptions(false);
   };
 
   const createCategory = async () => {
@@ -270,16 +299,42 @@ export default function TaskModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="pending">Pending</option>
-                <option value="progress">In Progress</option>
-                <option value="done">Completed</option>
-              </select>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={statusQuery}
+                  onChange={(e) => {
+                    setStatusQuery(e.target.value);
+                    setShowStatusOptions(true);
+                  }}
+                  onFocus={() => setShowStatusOptions(true)}
+                  onBlur={() => window.setTimeout(() => setShowStatusOptions(false), 120)}
+                  placeholder="Select status"
+                  className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+
+                {showStatusOptions && (
+                  <div className="absolute z-10 mt-2 max-h-44 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                    {filteredStatusOptions.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-gray-400">No matching statuses</p>
+                    ) : (
+                      filteredStatusOptions.map((status) => (
+                        <button
+                          key={status.value}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            selectStatus(status);
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {status.label}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
