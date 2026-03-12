@@ -19,7 +19,7 @@ DB_HOST=localhost
 DB_PORT=5432
 
 GOOGLE_CLIENT_ID=
-GOOGLE_SECRET_KEY=
+GOOGLE_CLIENT_SECRET=
 ```
 
 Example `frontend/.env.local`:
