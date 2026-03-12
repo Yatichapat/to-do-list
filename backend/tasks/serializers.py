@@ -9,7 +9,7 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 
-class AssignedUserSerializer(serializers.ModelSerializer):
+class TaggedUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "email"]
@@ -17,8 +17,13 @@ class AssignedUserSerializer(serializers.ModelSerializer):
 
 class TaskSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
-    assigned_users_detail = AssignedUserSerializer(
-        source="assigned_users", many=True, read_only=True
+    tag_users_detail = TaggedUserSerializer(
+        source="tag_users", many=True, read_only=True
+    )
+    tag_users = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        many=True,
+        required=False,
     )
 
     class Meta:
@@ -26,7 +31,17 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = [
             "id", "title", "description", "status", "due_date",
             "category", "category_name",
-            "assigned_users", "assigned_users_detail",
+            "tag_users", "tag_users_detail",
             "user", "created_at",
         ]
         read_only_fields = ["user", "created_at"]
+
+    def validate_category(self, value):
+        if value is None:
+            return value
+
+        request = self.context.get("request")
+        if request and value.user_id != request.user.id:
+            raise serializers.ValidationError("Invalid category for this user")
+
+        return value

@@ -1,45 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import type { Category, TaskItem } from "@/lib/types";
+import { STATUS_BADGE_COLOR, STATUS_LABEL } from "@/lib/constants";
+import { Calendar, Users } from "lucide-react";
 
-export interface TaskItem {
-  id: number;
-  title: string;
-  description: string;
-  status: string;
-  due_date: string | null;
-  category: number | null;
-  category_name: string | null;
-  assigned_users_detail: { id: number; username: string; email: string }[];
-  created_at: string;
-}
-
-interface CategoryOption {
-  id: number;
-  name: string;
-}
+export type { TaskItem };
 
 interface Props {
   loading: boolean;
   tasks: TaskItem[];
-  categories: CategoryOption[];
+  categories: Category[];
   onEdit: (task: TaskItem) => void;
   onDelete: (id: number) => void;
   onChangeStatus: (task: TaskItem, status: string) => void;
   onChangeCategory: (task: TaskItem, categoryId: number | null) => void;
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  progress: "In Progress",
-  done: "Completed",
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-700",
-  progress: "bg-blue-100 text-blue-700",
-  done: "bg-green-100 text-green-700",
-};
 
 function formatDate(iso: string | null) {
   if (!iso) return null;
@@ -109,7 +85,7 @@ export default function TaskList({
                         e.stopPropagation();
                         setStatusEditingTaskId(task.id);
                       }}
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[task.status]}`}
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE_COLOR[task.status]}`}
                     >
                       {STATUS_LABEL[task.status]}
                     </button>
@@ -155,14 +131,24 @@ export default function TaskList({
 
                 <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
                   {task.due_date && (
-                    <span className={isOverdue(task.due_date, task.status) ? "text-red-500 font-medium" : ""}>
-                      📅 {formatDate(task.due_date)}
-                      {isOverdue(task.due_date, task.status) && " (Overdue)"}
+                    <span
+                      className={`inline-flex items-center gap-1 ${
+                        isOverdue(task.due_date, task.status)
+                          ? "text-red-500 font-medium"
+                          : ""
+                      }`}
+                    >
+                      <Calendar className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                      <span>
+                        {formatDate(task.due_date)}
+                        {isOverdue(task.due_date, task.status) && " (Overdue)"}
+                      </span>
                     </span>
                   )}
-                  {task.assigned_users_detail.length > 0 && (
+                  {task.tag_users_detail.length > 0 && (
                     <span>
-                      👥 {task.assigned_users_detail.map((u) => u.username).join(", ")}
+                      <Users className="inline-block mr-2 text-blue-400" size={14} />
+                      {task.tag_users_detail.map((u) => u.username).join(", ")}
                     </span>
                   )}
                 </div>
@@ -218,10 +204,10 @@ export default function TaskList({
                 {formatDate(selectedTask.due_date) || "Not set"}
               </p>
               <p className="text-gray-700">
-                <span className="font-medium">Assigned:</span>{" "}
-                {selectedTask.assigned_users_detail.length > 0
-                  ? selectedTask.assigned_users_detail.map((u) => u.username).join(", ")
-                  : "No assigned users"}
+                <span className="font-medium">Tagged Users:</span>{" "}
+                {selectedTask.tag_users_detail.length > 0
+                  ? selectedTask.tag_users_detail.map((u) => u.username).join(", ")
+                  : "No tagged users"}
               </p>
             </div>
           </div>

@@ -1,18 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api";
-
-interface Category {
-  id: number;
-  name: string;
-}
-
-interface AppUser {
-  id: number;
-  username: string;
-  email: string;
-}
+import { apiFetch, apiPatch, apiPost } from "@/lib/api";
+import type { AppUser, Category } from "@/lib/types";
 
 interface Task {
   id?: number;
@@ -21,13 +11,15 @@ interface Task {
   status: string;
   due_date: string;
   category: number | null;
-  assigned_users: number[];
+  tag_users: number[];
 }
 
 interface Props {
   task: Task | null;
   categories: Category[];
   users: AppUser[];
+  onCategoryCreated: (category: Category) => void;
+  onCategoryDeleted: (categoryId: number) => void;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -38,22 +30,60 @@ const emptyForm: Task = {
   status: "pending",
   due_date: "",
   category: null,
-  assigned_users: [],
+  tag_users: [],
 };
 
-export default function TaskModal({ task, categories, users, onClose, onSaved }: Props) {
-  const [form, setForm] = useState<Task>(task ?? emptyForm);
+export default function TaskModal({
+  task,
+  categories,
+  users,
+  onCategoryCreated,
+  onCategoryDeleted,
+  onClose,
+  onSaved,
+}: Props) {
+  const [form, setForm] = useState<Task>(emptyForm);
+  const [localCategories, setLocalCategories] = useState<Category[]>(categories);
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const [showCategoryOptions, setShowCategoryOptions] = useState(false);
+  const [categoryBusy, setCategoryBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [assignedUserQuery, setAssignedUserQuery] = useState("");
   const [showAssignedUserOptions, setShowAssignedUserOptions] = useState(false);
 
   useEffect(() => {
-    setForm(task ?? emptyForm);
+    setLocalCategories(categories);
+  }, [categories]);
+
+  useEffect(() => {
+    if (!task) {
+      setForm(emptyForm);
+      setCategoryQuery("");
+    } else {
+      const normalizedTagUsers =
+        task.tag_users ??
+        (task as unknown as { tag_users_detail?: { id: number }[] }).tag_users_detail?.map((u) => u.id) ??
+        [];
+
+      const selectedCategory = categories.find((c) => c.id === task.category);
+
+      setForm({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        due_date: task.due_date,
+        category: task.category,
+        tag_users: normalizedTagUsers,
+      });
+      setCategoryQuery(selectedCategory?.name ?? "");
+    }
     setError("");
+    setShowCategoryOptions(false);
     setAssignedUserQuery("");
     setShowAssignedUserOptions(false);
-  }, [task]);
+  }, [task, categories]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -80,12 +110,12 @@ export default function TaskModal({ task, categories, users, onClose, onSaved }:
       status: form.status,
       due_date: form.due_date || null,
       category: form.category,
-      assigned_users: form.assigned_users,
+      tag_users: form.tag_users,
     };
 
     const res = task?.id
-      ? await apiFetch(`/tasks/${task.id}/`, { method: "PATCH", body: JSON.stringify(payload) })
-      : await apiFetch("/tasks/", { method: "POST", body: JSON.stringify(payload) });
+      ? await apiPatch(`/tasks/${task.id}/`, payload)
+      : await apiPost("/tasks/", payload);
 
     setSaving(false);
 
@@ -99,25 +129,25 @@ export default function TaskModal({ task, categories, users, onClose, onSaved }:
 
   const toggleAssignedUser = (userId: number) => {
     setForm((prev) => {
-      const exists = prev.assigned_users.includes(userId);
+      const exists = prev.tag_users.includes(userId);
       return {
         ...prev,
-        assigned_users: exists
-          ? prev.assigned_users.filter((id) => id !== userId)
-          : [...prev.assigned_users, userId],
+        tag_users: exists
+          ? prev.tag_users.filter((id) => id !== userId)
+          : [...prev.tag_users, userId],
       };
     });
   };
 
   const selectedUsers = useMemo(
-    () => users.filter((user) => form.assigned_users.includes(user.id)),
-    [users, form.assigned_users]
+    () => users.filter((user) => form.tag_users.includes(user.id)),
+    [users, form.tag_users]
   );
 
   const filteredUsers = useMemo(() => {
     const query = assignedUserQuery.trim().toLowerCase();
     return users.filter((user) => {
-      if (form.assigned_users.includes(user.id)) {
+      if (form.tag_users.includes(user.id)) {
         return false;
       }
 
@@ -130,7 +160,78 @@ export default function TaskModal({ task, categories, users, onClose, onSaved }:
         user.email.toLowerCase().includes(query)
       );
     });
-  }, [users, form.assigned_users, assignedUserQuery]);
+  }, [users, form.tag_users, assignedUserQuery]);
+
+  const filteredCategories = useMemo(() => {
+    const query = categoryQuery.trim().toLowerCase();
+    if (!query) {
+      return localCategories;
+    }
+
+    return localCategories.filter((category) =>
+      category.name.toLowerCase().includes(query)
+    );
+  }, [localCategories, categoryQuery]);
+
+  const hasExactCategory = useMemo(() => {
+    const query = categoryQuery.trim().toLowerCase();
+    if (!query) {
+      return false;
+    }
+
+    return localCategories.some((category) => category.name.toLowerCase() === query);
+  }, [localCategories, categoryQuery]);
+
+  const selectCategory = (category: Category) => {
+    setForm((prev) => ({ ...prev, category: category.id }));
+    setCategoryQuery(category.name);
+    setShowCategoryOptions(false);
+  };
+
+  const createCategory = async () => {
+    const name = categoryQuery.trim();
+    if (!name || hasExactCategory || categoryBusy) {
+      return;
+    }
+
+    setCategoryBusy(true);
+    const res = await apiPost("/categories/", { name });
+    setCategoryBusy(false);
+
+    if (!res.ok) {
+      setError("Failed to create category.");
+      return;
+    }
+
+    const created = (await res.json()) as Category;
+    setLocalCategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+    onCategoryCreated(created);
+    setForm((prev) => ({ ...prev, category: created.id }));
+    setCategoryQuery(created.name);
+    setShowCategoryOptions(false);
+  };
+
+  const deleteCategory = async (category: Category) => {
+    if (!window.confirm(`Delete category \"${category.name}\"?`)) {
+      return;
+    }
+
+    setCategoryBusy(true);
+    const res = await apiFetch(`/categories/${category.id}/`, { method: "DELETE" });
+    setCategoryBusy(false);
+
+    if (!res.ok) {
+      setError("Failed to delete category.");
+      return;
+    }
+
+    setLocalCategories((prev) => prev.filter((item) => item.id !== category.id));
+    onCategoryDeleted(category.id);
+    if (form.category === category.id) {
+      setForm((prev) => ({ ...prev, category: null }));
+      setCategoryQuery("");
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -183,17 +284,90 @@ export default function TaskModal({ task, categories, users, onClose, onSaved }:
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select
-                name="category"
-                value={form.category ?? ""}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="">No category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={categoryQuery}
+                  onChange={(e) => {
+                    setCategoryQuery(e.target.value);
+                    setShowCategoryOptions(true);
+                  }}
+                  onFocus={() => setShowCategoryOptions(true)}
+                  onBlur={() => window.setTimeout(() => setShowCategoryOptions(false), 120)}
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      await createCategory();
+                    }
+                  }}
+                  placeholder="Type to search or press Enter to create"
+                  className="w-full border rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+
+                {showCategoryOptions && (
+                  <div className="absolute z-10 mt-2 max-h-44 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setForm((prev) => ({ ...prev, category: null }));
+                        setCategoryQuery("");
+                        setShowCategoryOptions(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50"
+                    >
+                      No category
+                    </button>
+
+                    {!hasExactCategory && categoryQuery.trim() && (
+                      <button
+                        type="button"
+                        disabled={categoryBusy}
+                        onMouseDown={async (e) => {
+                          e.preventDefault();
+                          await createCategory();
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                      >
+                        Create "{categoryQuery.trim()}"
+                      </button>
+                    )}
+
+                    {filteredCategories.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-gray-400">No matching categories</p>
+                    ) : (
+                      filteredCategories.map((category) => (
+                        <div
+                          key={category.id}
+                          className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50"
+                        >
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              selectCategory(category);
+                            }}
+                            className="min-w-0 flex-1 text-left text-sm text-gray-700 truncate"
+                          >
+                            {category.name}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={categoryBusy}
+                            onMouseDown={async (e) => {
+                              e.preventDefault();
+                              await deleteCategory(category);
+                            }}
+                            className="text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
+                          >
+                            x
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -209,7 +383,7 @@ export default function TaskModal({ task, categories, users, onClose, onSaved }:
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Users</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tag Users</label>
             <div className="relative">
               <div className="border border-gray-300 rounded-lg px-3 py-2 min-h-11 focus-within:ring-2 focus-within:ring-blue-400">
                 <div className="flex flex-wrap gap-2 mb-2">

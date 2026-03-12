@@ -10,8 +10,6 @@ export default function GoogleProvider({
 }) {
   const rawClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
   const clientId = rawClientId.trim().replace(/^['\"]|['\"]$/g, "");
-
-  console.log("Using Google Client ID:", clientId);
   
   if (!clientId) {
     throw new Error("Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID in frontend/.env.local");

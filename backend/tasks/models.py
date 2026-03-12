@@ -4,6 +4,13 @@ from django.contrib.auth.models import User
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="categories",
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return self.name
@@ -11,19 +18,18 @@ class Category(models.Model):
 
 class Task(models.Model):
 
-    STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("progress", "In Progress"),
-        ("done", "Completed"),
-    ]
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        IN_PROGRESS = "progress", "In Progress"
+        DONE = "done", "Completed"
 
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
 
     status = models.CharField(
         max_length=20,
-        choices=STATUS_CHOICES,
-        default="pending"
+        choices=Status.choices,
+        default=Status.PENDING,
     )
 
     due_date = models.DateTimeField(null=True, blank=True)
@@ -41,9 +47,9 @@ class Task(models.Model):
         related_name="tasks"
     )
 
-    assigned_users = models.ManyToManyField(
+    tag_users = models.ManyToManyField(
         User,
-        related_name="assigned_tasks",
+        related_name="tagged_tasks",
         blank=True
     )
 

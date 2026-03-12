@@ -4,19 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import TaskModal from "@/components/TaskModal";
-import TaskList, { TaskItem } from "@/components/TaskList";
-import { apiFetch } from "@/lib/api";
-
-interface Category {
-  id: number;
-  name: string;
-}
-
-interface AppUser {
-  id: number;
-  username: string;
-  email: string;
-}
+import TaskList from "@/components/TaskList";
+import { apiFetch, apiDelete, apiPatch } from "@/lib/api";
+import type { AppUser, Category, TaskItem } from "@/lib/types";
 
 export default function TasksPage() {
   const router = useRouter();
@@ -59,7 +49,7 @@ export default function TasksPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this task?")) return;
-    await apiFetch(`/tasks/${id}/`, { method: "DELETE" });
+    await apiDelete(`/tasks/${id}/`);
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
@@ -71,10 +61,7 @@ export default function TasksPage() {
       prev.map((t) => (t.id === task.id ? { ...t, status } : t))
     );
 
-    const res = await apiFetch(`/tasks/${task.id}/`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
+    const res = await apiPatch(`/tasks/${task.id}/`, { status });
 
     if (!res.ok) {
       setTasks((prev) =>
@@ -101,10 +88,7 @@ export default function TasksPage() {
       )
     );
 
-    const res = await apiFetch(`/tasks/${task.id}/`, {
-      method: "PATCH",
-      body: JSON.stringify({ category: categoryId }),
-    });
+    const res = await apiPatch(`/tasks/${task.id}/`, { category: categoryId });
 
     if (!res.ok) {
       setTasks((prev) =>
@@ -140,6 +124,28 @@ export default function TasksPage() {
   const openEdit = (task: TaskItem) => {
     setEditingTask(task as any);
     setModalOpen(true);
+  };
+
+  const handleCategoryCreated = (category: Category) => {
+    setCategories((prev) => {
+      if (prev.some((item) => item.id === category.id)) {
+        return prev;
+      }
+
+      return [...prev, category].sort((a, b) => a.name.localeCompare(b.name));
+    });
+  };
+
+  const handleCategoryDeleted = (categoryId: number) => {
+    setCategories((prev) => prev.filter((category) => category.id !== categoryId));
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.category === categoryId
+          ? { ...task, category: null, category_name: null }
+          : task
+      )
+    );
+    setFilterCategory((prev) => (prev === String(categoryId) ? "all" : prev));
   };
 
   const handleSaved = () => {
@@ -226,6 +232,8 @@ export default function TasksPage() {
           task={editingTask as any}
           categories={categories}
           users={users}
+          onCategoryCreated={handleCategoryCreated}
+          onCategoryDeleted={handleCategoryDeleted}
           onClose={() => setModalOpen(false)}
           onSaved={handleSaved}
         />
