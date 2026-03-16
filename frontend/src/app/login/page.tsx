@@ -1,23 +1,14 @@
 "use client";
 
-import { GoogleLogin } from "@react-oauth/google";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import type { AppUser } from "@/lib/types";
 import { Eye, EyeOff } from "lucide-react";
 
-import GoogleProvider from "@/components/GoogleProvider";
-
-type CredentialResponse = Parameters<React.ComponentProps<typeof GoogleLogin>["onSuccess"]>[0];
-
 export default function LoginPage() {
   const router = useRouter();
-  const hasGoogleClientId = Boolean(
-    (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "")
-      .trim()
-      .replace(/^['\"]|['\"]$/g, "")
-  );
   const [success, setSuccess] = useState(false);
   const [username, setUsername] = useState("demo");
   const [password, setPassword] = useState("Demo1234!");
@@ -31,32 +22,6 @@ export default function LoginPage() {
     localStorage.setItem("user", JSON.stringify(user));
     setSuccess(true);
     setTimeout(() => router.push("/dashboard"), 2000);
-  };
-
-  const handleGoogleLogin = async (credentialResponse: CredentialResponse) => {
-    setError("");
-    const token = credentialResponse.credential;
-    if (!token) {
-      setError("Google credential missing.");
-      return;
-    }
-
-    try {
-      const res = await apiFetch("/google-login/", {
-        method: "POST",
-        body: JSON.stringify({ token }),
-      });
-
-      if (!res.ok) {
-        setError("Google login failed. Please try again.");
-        return;
-      }
-
-      const data = await res.json();
-      handleSuccess(data.access, data.refresh, data.user);
-    } catch {
-      setError("Google login request failed.");
-    }
   };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
@@ -102,7 +67,6 @@ export default function LoginPage() {
   }
 
   return (
-    <GoogleProvider>
     <div className="flex h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md p-8 shadow-lg rounded-lg bg-white">
         <h1 className="text-2xl mb-9 mt-2 text-gray-800 text-center">Login to To-Do App</h1>
@@ -139,28 +103,15 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {hasGoogleClientId && (
-          <>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-px flex-1 bg-gray-200" />
-              <span className="text-xs text-gray-400">OR</span>
-              <div className="h-px flex-1 bg-gray-200" />
-            </div>
-
-            <GoogleLogin
-              theme="outline"
-              size="large"
-              text="continue_with"
-              shape="rectangular"
-              onSuccess={handleGoogleLogin}
-              onError={() => setError("Google login failed.")}
-            />
-          </>
-        )}
-
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+
+        <p className="mt-5 text-center text-sm text-gray-500">
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700">
+            Register
+          </Link>
+        </p>
       </div>
     </div>
-    </GoogleProvider>
   );
 }
