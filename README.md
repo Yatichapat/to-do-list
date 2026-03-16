@@ -108,5 +108,7 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=<optional>
 
 Deployment notes:
 - Backend serves with Gunicorn and runs `migrate` + `collectstatic` on container start.
+- To auto-seed demo data on startup, set `RUN_SEED_DATA=true` in backend environment variables.
+- To seed only the first time (recommended), set `RUN_SEED_DATA=once`.
 - Keep `CORS_ALLOW_ALL_ORIGINS` disabled in production and use `CORS_ALLOWED_ORIGINS` instead.
 - If you use a custom domain, add that domain to `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `CSRF_TRUSTED_ORIGINS`.

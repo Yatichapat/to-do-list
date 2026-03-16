@@ -10,20 +10,35 @@ from tasks.models import Category, Task
 class Command(BaseCommand):
     help = "Seed demo data (users, categories, tasks)"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--if-empty",
+            action="store_true",
+            help="Skip seeding when demo data appears to already exist.",
+        )
+
     def handle(self, *args, **options):
+        if options.get("if_empty") and (
+            User.objects.filter(username="demo").exists() or Task.objects.exists()
+        ):
+            self.stdout.write(self.style.WARNING("Skip seeding: existing data found."))
+            return
+
         demo_user, created = User.objects.get_or_create(
             username="demo",
             defaults={"email": "demo@example.com"},
         )
-        demo_user.set_password("Demo1234!")
-        demo_user.save()
+        if created:
+            demo_user.set_password("Demo1234!")
+            demo_user.save()
 
         reviewer_user, reviewer_created = User.objects.get_or_create(
             username="reviewer",
             defaults={"email": "reviewer@example.com"},
         )
-        reviewer_user.set_password("Reviewer1234!")
-        reviewer_user.save()
+        if reviewer_created:
+            reviewer_user.set_password("Reviewer1234!")
+            reviewer_user.save()
 
         categories = {}
         for name in ["Work", "Personal", "Study"]:

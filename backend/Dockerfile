@@ -22,4 +22,4 @@ RUN if [ -f /app/backend/manage.py ] && [ ! -f /app/manage.py ]; then cp -a /app
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && SEED_MODE=${RUN_SEED_DATA:-false} && if [ \"$SEED_MODE\" = \"true\" ]; then python manage.py seed_demo_data; elif [ \"$SEED_MODE\" = \"once\" ]; then python manage.py seed_demo_data --if-empty; fi && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
