@@ -1,0 +1,39 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Django / local artifacts
+db.sqlite3
+db.sqlite3-journal
+*.log
+media/
+staticfiles/
+
+# Environment and local settings
+.env
+.env.*
+!.env.example
+*.pem
+
+# OS files
+.DS_Store

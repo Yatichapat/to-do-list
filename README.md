@@ -83,3 +83,30 @@ curl http://127.0.0.1:8000/api/tasks/ \
 
 - App: `http://127.0.0.1:3000`
 - API: `http://127.0.0.1:8000/api`
+
+## Production Deployment (Railway + Vercel)
+
+Backend (Railway) environment variables:
+
+```env
+DEBUG=False
+SECRET_KEY=<generate-a-long-random-secret>
+ALLOWED_HOSTS=<your-railway-domain>.up.railway.app
+CORS_ALLOWED_ORIGINS=https://<your-vercel-domain>.vercel.app
+CSRF_TRUSTED_ORIGINS=https://<your-vercel-domain>.vercel.app
+
+# Railway Postgres provides DATABASE_URL automatically.
+# If you are not using Railway Postgres, set DB_NAME/DB_USER/DB_PASSWORD/DB_HOST/DB_PORT.
+```
+
+Frontend (Vercel) environment variables:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://<your-railway-domain>.up.railway.app
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<optional>
+```
+
+Deployment notes:
+- Backend serves with Gunicorn and runs `migrate` + `collectstatic` on container start.
+- Keep `CORS_ALLOW_ALL_ORIGINS` disabled in production and use `CORS_ALLOWED_ORIGINS` instead.
+- If you use a custom domain, add that domain to `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `CSRF_TRUSTED_ORIGINS`.
