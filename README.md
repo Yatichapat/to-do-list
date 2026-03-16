@@ -1,5 +1,32 @@
 # To-Do List
 
+## Live Demo
+
+You can access the deployed app directly:
+
+- Frontend (Vercel): https://to-do-list-eight-bice-25.vercel.app
+- Backend API (Railway): https://to-do-list-production-affb.up.railway.app
+- Protected API endpoint: https://to-do-list-production-affb.up.railway.app/api/stats/
+
+Use these links without running local setup.
+
+Note:
+- `/api/stats/` requires JWT authentication.
+- If you open it directly in browser, you will see: `Authentication credentials were not provided.`
+
+Quick test with token:
+
+```bash
+# 1) Login to get JWT token
+curl -X POST https://to-do-list-production-affb.up.railway.app/api/login/ \
+	-H "Content-Type: application/json" \
+	-d '{"username":"demo","password":"Demo1234!"}'
+
+# 2) Use access token with /api/stats/
+curl https://to-do-list-production-affb.up.railway.app/api/stats/ \
+	-H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
 ## Environment Setup
 
 Before running the project, create and edit these 2 files:
@@ -61,54 +88,3 @@ Demo user:
 - Username: `demo`
 - Password: `Demo1234!`
 
-## API Quick Test
-
-1. Login to get token:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/login/ \
-	-H "Content-Type: application/json" \
-	-d '{"username":"demo","password":"Demo1234!"}'
-```
-
-2. Use returned `access` token:
-
-```bash
-TOKEN="YOUR_ACCESS_TOKEN"
-curl http://127.0.0.1:8000/api/tasks/ \
-	-H "Authorization: Bearer $TOKEN"
-```
-
-## Frontend
-
-- App: `http://127.0.0.1:3000`
-- API: `http://127.0.0.1:8000/api`
-
-## Production Deployment (Railway + Vercel)
-
-Backend (Railway) environment variables:
-
-```env
-DEBUG=False
-SECRET_KEY=<generate-a-long-random-secret>
-ALLOWED_HOSTS=<your-railway-domain>.up.railway.app
-CORS_ALLOWED_ORIGINS=https://<your-vercel-domain>.vercel.app
-CSRF_TRUSTED_ORIGINS=https://<your-vercel-domain>.vercel.app
-
-# Railway Postgres provides DATABASE_URL automatically.
-# If you are not using Railway Postgres, set DB_NAME/DB_USER/DB_PASSWORD/DB_HOST/DB_PORT.
-```
-
-Frontend (Vercel) environment variables:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=https://<your-railway-domain>.up.railway.app
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=<optional>
-```
-
-Deployment notes:
-- Backend serves with Gunicorn and runs `migrate` + `collectstatic` on container start.
-- To auto-seed demo data on startup, set `RUN_SEED_DATA=true` in backend environment variables.
-- To seed only the first time (recommended), set `RUN_SEED_DATA=once`.
-- Keep `CORS_ALLOW_ALL_ORIGINS` disabled in production and use `CORS_ALLOWED_ORIGINS` instead.
-- If you use a custom domain, add that domain to `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `CSRF_TRUSTED_ORIGINS`.
