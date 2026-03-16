@@ -198,6 +198,12 @@ CORS_ALLOWED_ORIGINS = env_list(
         'http://127.0.0.1:3000',
     ],
 )
+CORS_ALLOWED_ORIGIN_REGEXES = env_list(
+    'CORS_ALLOWED_ORIGIN_REGEXES',
+    [
+        r'^https://.*\.vercel\.app$',
+    ],
+)
 CORS_ALLOW_ALL_ORIGINS = env_bool('CORS_ALLOW_ALL_ORIGINS', False)
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', [])
