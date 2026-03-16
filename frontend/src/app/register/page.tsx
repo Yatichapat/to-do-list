@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
-import type { AppUser } from "@/lib/types";
+import { saveSession } from "@/lib/auth";
+import PasswordInput from "@/components/PasswordInput";
+import SuccessCard from "@/components/SuccessCard";
+import { CheckCircle } from "lucide-react";
 
 type RegistrationError = Record<string, string[] | string>;
 
@@ -14,26 +16,17 @@ function getErrorMessage(payload: unknown, status?: number): string {
   if (status === 404) {
     return "Register API not found. Please deploy the latest backend service.";
   }
-
   if (!payload || typeof payload !== "object") {
     return status ? `Registration failed (HTTP ${status}). Please try again.` : "Registration failed. Please try again.";
   }
-
   const data = payload as RegistrationError;
-
   if (typeof data.detail === "string" && data.detail.trim()) {
     return data.detail;
   }
-
   for (const value of Object.values(data)) {
-    if (Array.isArray(value) && value.length > 0) {
-      return String(value[0]);
-    }
-    if (typeof value === "string" && value.trim()) {
-      return value;
-    }
+    if (Array.isArray(value) && value.length > 0) return String(value[0]);
+    if (typeof value === "string" && value.trim()) return value;
   }
-
   return status ? `Registration failed (HTTP ${status}). Please try again.` : "Registration failed. Please try again.";
 }
 
@@ -42,8 +35,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password1, setPassword1] = useState("");
   const [password2, setPassword2] = useState("");
-  const [showPassword1, setShowPassword1] = useState(false);
-  const [showPassword2, setShowPassword2] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -97,12 +88,10 @@ export default function RegisterPage() {
       const data = (await res.json()) as {
         access: string;
         refresh: string;
-        user: Pick<AppUser, "id" | "username" | "email">;
+        user: { id: number; username: string; email: string };
       };
 
-      localStorage.setItem("access", data.access);
-      localStorage.setItem("refresh", data.refresh);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      saveSession(data);
 
       setSuccess(true);
       setTimeout(() => router.push("/dashboard"), 1200);
@@ -115,13 +104,7 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="rounded-lg bg-white p-10 text-center shadow-lg">
-          <div className="mb-4 text-5xl">✅</div>
-          <h1 className="mb-2 text-2xl font-bold text-green-600">Account Created</h1>
-          <p className="text-sm text-gray-500">Logging you in...</p>
-        </div>
-      </div>
+      <SuccessCard icon={<CheckCircle className="w-22 h-22"/>} title="Account Created" subtitle="Logging you in..." />
     );
   }
 
@@ -139,39 +122,9 @@ export default function RegisterPage() {
             className="w-full rounded-lg border px-3 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
 
-          <div className="relative">
-            <input
-              type={showPassword1 ? "text" : "password"}
-              value={password1}
-              onChange={(e) => setPassword1(e.target.value)}
-              placeholder="Password"
-              className="w-full rounded-lg border px-3 py-3 pr-12 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword1((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-            >
-              {showPassword1 ? <Eye size={18} /> : <EyeOff size={18} />}
-            </button>
-          </div>
+          <PasswordInput value={password1} onChange={setPassword1} placeholder="Password" />
 
-          <div className="relative">
-            <input
-              type={showPassword2 ? "text" : "password"}
-              value={password2}
-              onChange={(e) => setPassword2(e.target.value)}
-              placeholder="Confirm Password"
-              className="w-full rounded-lg border px-3 py-3 pr-12 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword2((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-            >
-              {showPassword2 ? <Eye size={18} /> : <EyeOff size={18} />}
-            </button>
-          </div>
+          <PasswordInput value={password2} onChange={setPassword2} placeholder="Confirm Password" />
 
           {passwordsMismatch && <p className="text-sm text-red-500">Passwords do not match.</p>}
 

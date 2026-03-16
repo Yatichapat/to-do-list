@@ -3,28 +3,22 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
 import { apiFetch } from "@/lib/api";
-import type { AppUser } from "@/lib/types";
-import { Eye, EyeOff } from "lucide-react";
+import { saveSession } from "@/lib/auth";
+import { PartyPopper } from "lucide-react";
+import PasswordInput from "@/components/PasswordInput";
+import SuccessCard from "@/components/SuccessCard";
 
 export default function LoginPage() {
   const router = useRouter();
   const [success, setSuccess] = useState(false);
   const [username, setUsername] = useState("demo");
   const [password, setPassword] = useState("Demo1234!");
-  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSuccess = (access: string, refresh: string, user: Pick<AppUser, "username" | "email">) => {
-    localStorage.setItem("access", access);
-    localStorage.setItem("refresh", refresh);
-    localStorage.setItem("user", JSON.stringify(user));
-    setSuccess(true);
-    setTimeout(() => router.push("/dashboard"), 2000);
-  };
-
-  const handlePasswordLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -46,7 +40,13 @@ export default function LoginPage() {
       }
 
       const data = await res.json();
-      handleSuccess(data.access, data.refresh, { username, email: data.user?.email ?? `${username}@local` });
+      saveSession({
+        access: data.access,
+        refresh: data.refresh,
+        user: { id: data.user?.id ?? 0, username, email: data.user?.email ?? `${username}@local` },
+      });
+      setSuccess(true);
+      setTimeout(() => router.push("/dashboard"), 2000);
     } catch {
       setError("Login request failed.");
     } finally {
@@ -56,13 +56,7 @@ export default function LoginPage() {
 
   if (success) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="p-10 shadow-lg rounded-lg bg-white text-center">
-          <div className="text-5xl mb-4">🎉</div>
-          <h1 className="text-2xl font-bold text-green-600 mb-2">Login Successfully!</h1>
-          <p className="text-gray-400 text-sm">Redirecting to dashboard...</p>
-        </div>
-      </div>
+      <SuccessCard icon={<PartyPopper className="w-22 h-22"/>} title="Login Successfully!" subtitle="Redirecting to dashboard..." />
     );
   }
 
@@ -71,29 +65,14 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 shadow-lg rounded-lg bg-white">
         <h1 className="text-2xl mb-9 mt-2 text-gray-800 text-center">Login to To-Do App</h1>
 
-        <form onSubmit={handlePasswordLogin} className="space-y-3 mb-10">
+        <form onSubmit={handleSubmit} className="space-y-3 mb-10">
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Username"
             className="w-full border rounded-lg px-3 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
-          <div className="relative mb-4">
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className="w-full border rounded-lg px-3 py-3 pr-12 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-            >
-              {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
-            </button>
-          </div>
+          <PasswordInput value={password} onChange={setPassword} />
           <button
             type="submit"
             disabled={submitting}

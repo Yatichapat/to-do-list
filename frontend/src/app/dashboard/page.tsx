@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import { apiGet } from "@/lib/api";
 import type { DashboardStats, DueSoonTask } from "@/lib/types";
 import { STATUS_CHART_COLOR, STATUS_LABEL } from "@/lib/constants";
+import { formatDate } from "@/lib/utils";
 
 export default function DashboardPage() {
   const router = useRouter();

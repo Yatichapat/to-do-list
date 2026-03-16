@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch, apiPatch, apiPost } from "@/lib/api";
-import type { AppUser, Category } from "@/lib/types";
+import type { AppUser, Category, TaskItem } from "@/lib/types";
 
-interface Task {
+interface TaskForm {
   id?: number;
   title: string;
   description: string;
@@ -15,7 +15,7 @@ interface Task {
 }
 
 interface Props {
-  task: Task | null;
+  task: TaskItem | null;
   categories: Category[];
   users: AppUser[];
   onCategoryCreated: (category: Category) => void;
@@ -30,7 +30,7 @@ const STATUS_OPTIONS = [
   { value: "done", label: "Completed" },
 ];
 
-const emptyForm: Task = {
+const emptyForm: TaskForm = {
   title: "",
   description: "",
   status: "pending",
@@ -48,7 +48,7 @@ export default function TaskModal({
   onClose,
   onSaved,
 }: Props) {
-  const [form, setForm] = useState<Task>(emptyForm);
+  const [form, setForm] = useState<TaskForm>(emptyForm);
   const [localCategories, setLocalCategories] = useState<Category[]>(categories);
   const [categoryQuery, setCategoryQuery] = useState("");
   const [showCategoryOptions, setShowCategoryOptions] = useState(false);
@@ -83,7 +83,7 @@ export default function TaskModal({
         title: task.title,
         description: task.description,
         status: task.status,
-        due_date: task.due_date,
+        due_date: task.due_date ?? "",
         category: task.category,
         tag_users: normalizedTagUsers,
       });

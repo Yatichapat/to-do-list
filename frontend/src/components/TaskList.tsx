@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Category, TaskItem } from "@/lib/types";
 import { STATUS_BADGE_COLOR, STATUS_LABEL } from "@/lib/constants";
+import { formatDate } from "@/lib/utils";
 import { Calendar, Users } from "lucide-react";
 
 export type { TaskItem };
@@ -15,14 +16,6 @@ interface Props {
   onDelete: (id: number) => void;
   onChangeStatus: (task: TaskItem, status: string) => void;
   onChangeCategory: (task: TaskItem, categoryId: number | null) => void;
-}
-
-function formatDate(iso: string | null) {
-  if (!iso) return null;
-  return new Date(iso).toLocaleString("th-TH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 function isOverdue(due: string | null, status: string) {

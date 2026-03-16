@@ -122,7 +122,7 @@ export default function TasksPage() {
   };
 
   const openEdit = (task: TaskItem) => {
-    setEditingTask(task as any);
+    setEditingTask(task);
     setModalOpen(true);
   };
 
