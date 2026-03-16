@@ -1,5 +1,9 @@
 import { NEXT_PUBLIC_API_BASE_URL } from "@/lib/constants";
 
+if (!NEXT_PUBLIC_API_BASE_URL && process.env.NODE_ENV === "production") {
+  throw new Error("Missing NEXT_PUBLIC_API_BASE_URL in production environment.");
+}
+
 const BASE_URL = `${NEXT_PUBLIC_API_BASE_URL}/api`;
 
 function getAuthHeaders(): HeadersInit {
