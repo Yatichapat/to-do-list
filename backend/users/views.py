@@ -2,6 +2,8 @@ import os
 
 import requests
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -26,7 +28,16 @@ class GoogleLoginView(APIView):
     permission_classes = []
 
     def post(self, request):
-        token = request.data.get("token")
+        token = (
+            request.data.get("token")
+            or request.data.get("credential")
+            or request.data.get("id_token")
+        )
+        if isinstance(token, str):
+            token = token.strip().strip('"')
+            if token.lower().startswith("bearer "):
+                token = token.split(" ", 1)[1].strip()
+
         if not token:
             return Response(
                 {"detail": "Missing Google token"},
@@ -40,8 +51,18 @@ class GoogleLoginView(APIView):
         )
 
         if verify_response.status_code != 200:
+            google_error = ""
+            try:
+                google_error = verify_response.json().get("error_description") or verify_response.json().get("error") or ""
+            except ValueError:
+                google_error = verify_response.text[:200]
+
             return Response(
-                {"detail": "Invalid Google token"},
+                {
+                    "detail": "Invalid Google token",
+                    "google_status": verify_response.status_code,
+                    "google_error": google_error,
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -82,6 +103,57 @@ class GoogleLoginView(APIView):
             user.save(update_fields=["first_name", "last_name"])
 
         return Response(_build_jwt_response(user), status=status.HTTP_200_OK)
+
+
+class RegisterView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        email = (request.data.get("email") or "").strip().lower()
+        password1 = (request.data.get("password1") or "").strip()
+        password2 = (request.data.get("password2") or "").strip()
+
+        if not email or not password1 or not password2:
+            return Response(
+                {"detail": "Email and password fields are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if password1 != password2:
+            return Response(
+                {"detail": "Passwords do not match."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {"detail": "This email is already registered."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            validate_password(password1)
+        except ValidationError as exc:
+            return Response(
+                {"detail": exc.messages[0] if exc.messages else "Password is invalid."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        username_base = email.split("@")[0] if "@" in email else "user"
+        username = username_base or "user"
+        suffix = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{username_base}{suffix}"
+            suffix += 1
+
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password1,
+        )
+
+        return Response(_build_jwt_response(user), status=status.HTTP_201_CREATED)
 
 
 class UserListView(APIView):
