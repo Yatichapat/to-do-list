@@ -51,7 +51,7 @@ if not SECRET_KEY:
     else:
         raise RuntimeError('SECRET_KEY must be set when DEBUG is False')
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', default=['*'])
 
 # Application definition
 
